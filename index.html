@@ -41,6 +41,7 @@
 <div class="nota" id="nota">Nenhum peixe é desenhado nesta tela. Você só os enxerga porque
   o plâncton acende na água que eles empurram.</div>
 <pre id="estat" hidden></pre>
+<pre id="filme" hidden></pre>
 
 <script>
 (function () {
@@ -84,7 +85,9 @@
    * ------------------------------------------------------------------ */
 
   function criaMundo() {
-    W = window.innerWidth; H = window.innerHeight;
+    // tamanho fixo por parâmetro é só para a captura headless sair sempre igual
+    W = parseInt(params.get('larg'), 10) || window.innerWidth;
+    H = parseInt(params.get('alt'), 10) || window.innerHeight;
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
 
     GW = Math.ceil(W / CEL); GH = Math.ceil(H / CEL); SW = GW + 2;
@@ -686,6 +689,9 @@
     // rAF congela no Chrome headless: simula em passos fixos e desenha só o fim
     var dur = parseFloat(params.get('t') || '4'), dt = 1 / 60, gasto = 0, passos = 0;
     var dedo = params.get('dedo') !== '0';
+    // ?filme=1 guarda um quadro a cada 1/fps de tempo simulado, para virar GIF depois
+    var aCada = params.has('filme') ? Math.max(1, Math.round(60 / parseFloat(params.get('fps') || '12'))) : 0;
+    var quadros = [], deQuando = parseFloat(params.get('de') || '0');
     while (tempo < dur) {
       if (dedo) {
         ponteiro.x = W * (0.5 + 0.32 * Math.sin(tempo * 1.3));
@@ -695,8 +701,12 @@
       var t0 = performance.now();
       passo(dt);
       gasto += performance.now() - t0; passos++;
+      if (aCada && passos % aCada === 0 && tempo >= deQuando) {
+        desenha(); quadros.push(canvas.toDataURL('image/png'));
+      }
     }
     desenha();
+    if (aCada) document.getElementById('filme').textContent = quadros.join('\n');
     var acesos = 0, maxSh = 0, somaRes = 0;
     for (var k = 0; k < N; k++) { if (brilho[k] > 0.3) acesos++; somaRes += reserva[k]; }
     for (k = 0; k < cisal.length; k++) if (cisal[k] > maxSh) maxSh = cisal[k];
